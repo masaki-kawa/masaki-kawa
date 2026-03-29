@@ -1,16 +1,28 @@
-## Hi there 👋
+# Hi, I'm Masaki 👋
 
-<!--
-**masaki-kawa/masaki-kawa** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Data Science student at UTS, focused on Machine Learning, Data Engineering, and workflow automation.
 
-Here are some ideas to get you started:
+## 🔧 Skills
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+* Python / Machine Learning
+* FastAPI / Streamlit
+* Airflow / dbt
+* Snowflake / Databricks
+* Notion / n8n / LLM tools
+
+## 🚀 Projects
+
+* Data Engineering pipelines
+* Workflow automation (Notion, n8n)
+* Local SEO and real-world data applications
+
+## 🌏 Focus
+
+* Data Engineering
+* Workflow automation
+* Local SEO
+
+## 📫 Contact
+
+* LinkedIn: https://www.linkedin.com/in/masaki-kawakami-563643354/
+
