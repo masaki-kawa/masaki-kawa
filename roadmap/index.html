@@ -99,6 +99,7 @@
     border: 1px solid var(--line);
     border-radius: 14px;
     padding: 14px 18px;
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     font-size: 12px;
   }
@@ -125,6 +126,7 @@
     z-index: 20;
     background: var(--panel-bg);
     border-left: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     padding: 34px 28px;
     overflow-y: auto;
@@ -183,10 +185,15 @@
   #close:hover { color: #fff; border-color: #fff; }
 
   @media (max-width: 640px) {
+    #title { top: 18px; left: 18px; }
     #title h1 { font-size: 19px; }
-    #legend { display: none; }
+    #legend { left: 18px; bottom: 18px; padding: 10px 14px; }
+    #legend .row { display: none; }
+    #legend .hint { margin-top: 0; padding-top: 0; border-top: none; }
+    #panel { padding: 30px 22px calc(30px + env(safe-area-inset-bottom)); }
     .node-label .name { font-size: 12px; }
     .node-label .sub { display: none; }
+    .link-label { font-size: 9px; padding: 1px 8px; }
   }
 </style>
 <script type="importmap">
@@ -212,7 +219,7 @@
   <div class="row"><span class="dot" style="color:var(--cyan)"></span>VAI studio — 3ブランド & AI全自動営業</div>
   <div class="row"><span class="dot" style="color:var(--amber)"></span>X / YouTube — AI発信 → flow への導線</div>
   <div class="row"><span class="dot" style="color:var(--green)"></span>vacanti — 豪州 留学生向け求職SaaS</div>
-  <div class="hint">ドラッグで回転 / スクロールでズーム<br>ノードをクリックで詳細を表示</div>
+  <div class="hint">ドラッグで回転 / ピンチ・スクロールでズーム<br>ノードをタップで詳細を表示</div>
 </div>
 
 <aside id="panel">
