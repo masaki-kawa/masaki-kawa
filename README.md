@@ -2,7 +2,7 @@
 
 # Masaki Kawakami
 
-**Data & AI, between Tokyo and Sydney.**
+**Data & AI. Based in Sydney, working across Japan and Australia.**
 
 I use AI to change how businesses run, and build the systems behind it myself.<br/>
 COO at [Cubic Innov8](https://cubic-innov8-group.com), a cross-border innovation hub connecting Japan and Australia.
