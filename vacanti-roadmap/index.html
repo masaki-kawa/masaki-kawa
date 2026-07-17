@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vacanti AI — Development Roadmap 3D</title>
+<style>
+  :root {
+    --amber: #fbbf24;
+    --cyan: #22d3ee;
+    --violet: #a78bfa;
+    --green: #34d399;
+    --pink: #f472b6;
+    --bg: #05060f;
+    --panel-bg: rgba(10, 14, 28, 0.85);
+    --line: rgba(148, 163, 184, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
+      "Yu Gothic", system-ui, -apple-system, sans-serif;
+    color: #e2e8f0;
+  }
+  #scene { position: fixed; inset: 0; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+
+  /* ---------- 3D labels ---------- */
+  .node-label {
+    pointer-events: none;
+    text-align: center;
+    transform: translateY(-6px);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .node-label .name { font-weight: 700; font-size: 13px; letter-spacing: 0.03em; }
+  .node-label .meta { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+  .node-label .badge {
+    display: inline-block;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    color: #fda4af;
+    border: 1px solid rgba(253, 164, 175, 0.6);
+    border-radius: 999px;
+    padding: 0 6px;
+    margin-left: 5px;
+    vertical-align: 2px;
+  }
+  .node-label.milestone .name { font-size: 16px; }
+  .lane-label, .month-label {
+    pointer-events: none;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .lane-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+  }
+  .lane-label .ja { display: block; font-size: 9px; font-weight: 400; color: #64748b; letter-spacing: 0.1em; }
+  .month-label {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: rgba(148, 163, 184, 0.8);
+  }
+
+  /* ---------- HUD ---------- */
+  .hud { position: fixed; z-index: 10; pointer-events: none; }
+  #title { top: 26px; left: 30px; }
+  #title h1 {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    background: linear-gradient(90deg, var(--amber), var(--cyan), var(--green));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #title p { margin-top: 6px; font-size: 11px; letter-spacing: 0.3em; color: #64748b; }
+  #legend {
+    left: 30px; bottom: 26px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 13px 17px;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 11px;
+  }
+  #legend .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  #legend .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  #legend .horizons {
+    margin-top: 9px; padding-top: 8px;
+    border-top: 1px solid var(--line);
+    color: #94a3b8; line-height: 1.8;
+  }
+  #legend .hint { color: #64748b; font-size: 10px; margin-top: 6px; line-height: 1.7; }
+
+  /* ---------- Detail panel ---------- */
+  #panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: min(390px, 92vw);
+    height: 100%;
+    z-index: 20;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    padding: 34px 28px;
+    overflow-y: auto;
+    transform: translateX(105%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #panel.open { transform: translateX(0); }
+  #panel .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  #panel .tag {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  #panel .tag.sample { color: #fda4af; }
+  #panel h2 { font-size: 21px; font-weight: 800; line-height: 1.35; }
+  #panel .sub { color: #94a3b8; font-size: 13px; margin: 6px 0 18px; }
+  #panel .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-bottom: 18px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    font-size: 12px;
+  }
+  #panel .meta b { display: block; color: #64748b; font-size: 9px; letter-spacing: 0.18em; margin-bottom: 2px; }
+  #panel ul { list-style: none; }
+  #panel li {
+    position: relative;
+    padding: 9px 0 9px 20px;
+    font-size: 12.5px;
+    line-height: 1.8;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.15);
+  }
+  #panel li::before {
+    content: "";
+    position: absolute;
+    left: 3px; top: 17px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+  #panel li span { color: #e2e8f0; }
+  #panel .sample-note {
+    margin-top: 16px;
+    font-size: 11px;
+    color: #fda4af;
+    border: 1px dashed rgba(253, 164, 175, 0.4);
+    border-radius: 10px;
+    padding: 10px 12px;
+    line-height: 1.7;
+  }
+  #close {
+    position: absolute;
+    top: 18px; right: 18px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #close:hover { color: #fff; border-color: #fff; }
+
+  @media (max-width: 640px) {
+    #title { top: 16px; left: 16px; }
+    #title h1 { font-size: 17px; }
+    #title p { font-size: 9px; }
+    #legend { left: 16px; bottom: 16px; padding: 9px 13px; }
+    #legend .row { display: none; }
+    #legend .horizons { margin-top: 0; padding-top: 0; border-top: none; }
+    #panel { padding: 30px 22px calc(30px + env(safe-area-inset-bottom)); }
+    .node-label .name { font-size: 11px; }
+    .node-label .meta { display: none; }
+    .node-label.milestone .name { font-size: 13px; }
+    .lane-label { font-size: 10px; }
+    .month-label { font-size: 9px; }
+  }
+</style>
+<script src="./roadmap-data.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div id="labels"></div>
+
+<div class="hud" id="title">
+  <h1 id="t-main"></h1>
+  <p id="t-sub"></p>
+</div>
+
+<div class="hud" id="legend">
+  <div id="legend-lanes"></div>
+  <div class="horizons">
+    ● 発光 = Now(〜1ヶ月・確定)<br>
+    ◐ 半透明 = Next(1〜3ヶ月)<br>
+    ◯ ワイヤー = Later(3〜6ヶ月・方向性)
+  </div>
+  <div class="hint">ドラッグで回転 / ピンチ・スクロールでズーム<br>ノードをタップで詳細を表示</div>
+</div>
+
+<aside id="panel">
+  <button id="close" aria-label="閉じる">✕</button>
+  <div class="tags" id="p-tags"></div>
+  <h2 id="p-name"></h2>
+  <p class="sub" id="p-sub"></p>
+  <div class="meta" id="p-meta"></div>
+  <ul id="p-list"></ul>
+  <div class="sample-note" id="p-sample" style="display:none">
+    ⚠ これはサンプルアイテムです。実際のロードマップ項目はチームで議論して
+    <code>roadmap-data.js</code> を更新してください。<br>
+    This is a placeholder item — replace it during roadmap planning.
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const DATA = window.ROADMAP_DATA;
+document.getElementById('t-main').textContent = DATA.meta.title;
+document.getElementById('t-sub').textContent = DATA.meta.subtitle + ' / UPDATED ' + DATA.meta.updated;
+
+/* ============================================================
+   Board layout — X: Jul–Dec 2026, Z: swimlanes
+============================================================ */
+const MONTHS = ['JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const MONTH_W = 6.6;
+const BOARD_W = MONTHS.length * MONTH_W;       // 39.6
+const X0 = -BOARD_W / 2;
+
+const LANE_DEPTH = 4.4;
+const itemLanes = DATA.lanes.filter((l) => l.id !== 'milestones');
+const laneZ = {};
+itemLanes.forEach((l, i) => { laneZ[l.id] = 7 - i * LANE_DEPTH; }); // 7, 2.6, -1.8, -6.2
+const MILESTONE_Z = -11.5;
+const MILESTONE_Y = 4.6;
+const Z_FRONT = laneZ[itemLanes[0].id] + LANE_DEPTH / 2;            // front edge
+
+const laneById = {};
+for (const l of DATA.lanes) laneById[l.id] = l;
+
+function monthIndex(target) {
+  if (!target) return 4.5;                      // no date -> "later" zone (Nov–Dec)
+  return parseInt(target.split('-')[1], 10) - 7;
+}
+function xForMonth(mi) { return X0 + mi * MONTH_W + MONTH_W / 2; }
+
+/* ============================================================
+   Scene setup
+============================================================ */
+const container = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060f, 0.009);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 400);
+camera.position.set(-6, 18, 34);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x05060f);
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.8, 0.7, 0.12));
+composer.addPass(new OutputPass());
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 10;
+controls.maxDistance = 80;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 2, -2);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.35;
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; }, { once: true });
+
+scene.add(new THREE.AmbientLight(0x334155, 1.4));
+const keyLight = new THREE.DirectionalLight(0x93c5fd, 1.1);
+keyLight.position.set(10, 22, 14);
+scene.add(keyLight);
+
+/* ---------- Starfield ---------- */
+{
+  const N = 1400;
+  const positions = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 90 + Math.random() * 130;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)) * 0.6 - 8;
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0x8aa2c8, size: 0.35, sizeAttenuation: true,
+    transparent: true, opacity: 0.8, depthWrite: false,
+  })));
+}
+
+/* ---------- Ground grid ---------- */
+{
+  const grid = new THREE.GridHelper(240, 120, 0x14213b, 0x0b1322);
+  grid.position.y = -0.5;
+  scene.add(grid);
+}
+
+/* ============================================================
+   Board: lane strips, month grid, milestone sky rail
+============================================================ */
+const lineMat = (color, opacity) => new THREE.LineBasicMaterial({
+  color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false,
+});
+
+/* Lane strips */
+for (const lane of itemLanes) {
+  const z = laneZ[lane.id];
+
+  const strip = new THREE.Mesh(
+    new THREE.BoxGeometry(BOARD_W, 0.1, LANE_DEPTH - 0.7),
+    new THREE.MeshStandardMaterial({
+      color: 0x0b1020, transparent: true, opacity: 0.8,
+      roughness: 0.4, metalness: 0.6,
+      emissive: lane.color, emissiveIntensity: 0.02,
+    })
+  );
+  strip.position.set(0, -0.06, z);
+  scene.add(strip);
+
+  for (const dz of [-(LANE_DEPTH - 0.7) / 2, (LANE_DEPTH - 0.7) / 2]) {
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(X0, 0.02, z + dz),
+      new THREE.Vector3(X0 + BOARD_W, 0.02, z + dz),
+    ]);
+    scene.add(new THREE.Line(g, lineMat(lane.color, 0.5)));
+  }
+
+  const div = document.createElement('div');
+  div.className = 'lane-label';
+  div.style.color = '#' + lane.color.toString(16).padStart(6, '0');
+  div.innerHTML = `${lane.label}<span class="ja">${lane.labelJa}</span>`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.set(X0 - 3.4, 0.4, z);
+  scene.add(lbl);
+}
+
+/* Month separators + labels */
+for (let i = 0; i <= MONTHS.length; i++) {
+  const x = X0 + i * MONTH_W;
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(x, 0.02, Z_FRONT),
+    new THREE.Vector3(x, 0.02, MILESTONE_Z - 1.5),
+  ]);
+  scene.add(new THREE.Line(g, lineMat(0x334155, 0.55)));
+
+  if (i < MONTHS.length) {
+    const div = document.createElement('div');
+    div.className = 'month-label';
+    div.textContent = MONTHS[i] + ' 2026';
+    const lbl = new CSS2DObject(div);
+    lbl.position.set(xForMonth(i), 0.15, Z_FRONT + 1.4);
+    scene.add(lbl);
+  }
+}
+
+/* Milestone sky rail */
+{
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(X0, MILESTONE_Y, MILESTONE_Z),
+    new THREE.Vector3(X0 + BOARD_W, MILESTONE_Y, MILESTONE_Z),
+  ]);
+  scene.add(new THREE.Line(g, lineMat(laneById.milestones.color, 0.7)));
+
+  const div = document.createElement('div');
+  div.className = 'lane-label';
+  div.style.color = '#' + laneById.milestones.color.toString(16).padStart(6, '0');
+  div.innerHTML = `🏁 ${laneById.milestones.label}<span class="ja">${laneById.milestones.labelJa}</span>`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.set(X0 - 3.4, MILESTONE_Y, MILESTONE_Z);
+  scene.add(lbl);
+}
+
+/* ============================================================
+   Nodes
+============================================================ */
+const SIZE_R = { S: 0.42, M: 0.55, L: 0.7 };
+const nodeMeshes = [];
+const nodeById = {};
+
+function makeMaterial(horizon, color, isMilestone) {
+  if (horizon === 'later') {
+    return new THREE.MeshBasicMaterial({
+      color, wireframe: true, transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+  }
+  return new THREE.MeshStandardMaterial({
+    color: 0x0f172a, roughness: 0.25, metalness: 0.4,
+    emissive: color,
+    emissiveIntensity: horizon === 'now' ? 1.9 : 0.9,
+    transparent: horizon === 'next', opacity: horizon === 'next' ? 0.92 : 1,
+  });
+}
+
+/* group items per lane+month so stacked items spread out */
+const slotCount = {};
+for (const it of DATA.items) {
+  const key = it.lane + '|' + Math.round(monthIndex(it.target) * 2);
+  slotCount[key] = (slotCount[key] || 0) + 1;
+}
+const slotUsed = {};
+
+for (const it of DATA.items) {
+  const lane = laneById[it.lane];
+  const isMilestone = it.lane === 'milestones';
+  const mi = monthIndex(it.target);
+
+  const key = it.lane + '|' + Math.round(mi * 2);
+  const n = slotCount[key];
+  const idx = (slotUsed[key] = (slotUsed[key] || 0) + 1) - 1;
+  const spread = n > 1 ? (idx - (n - 1) / 2) * 2.0 : 0;
+
+  const x = xForMonth(mi) + spread;
+  const y = isMilestone ? MILESTONE_Y : 1.5;
+  const z = isMilestone ? MILESTONE_Z : laneZ[it.lane];
+
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+
+  const r = isMilestone ? 0.92 : SIZE_R[it.size] || 0.55;
+  const geo = isMilestone ? new THREE.OctahedronGeometry(r) : new THREE.IcosahedronGeometry(r, 2);
+  const core = new THREE.Mesh(geo, makeMaterial(it.horizon, lane.color, isMilestone));
+  core.userData.item = it;
+  group.add(core);
+
+  if (it.horizon !== 'later') {
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 1.6, 24, 24),
+      new THREE.MeshBasicMaterial({
+        color: lane.color, transparent: true, opacity: 0.07,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    group.add(halo);
+  }
+
+  /* light beam down to floor */
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, y, 6),
+    new THREE.MeshBasicMaterial({
+      color: lane.color, transparent: true,
+      opacity: isMilestone ? 0.35 : 0.22,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  beam.position.y = -y / 2;
+  group.add(beam);
+
+  let ring = null;
+  if (isMilestone) {
+    ring = new THREE.Mesh(
+      new THREE.TorusGeometry(r * 1.7, 0.02, 8, 64),
+      new THREE.MeshBasicMaterial({
+        color: lane.color, transparent: true, opacity: 0.55,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    ring.rotation.x = Math.PI / 2.4;
+    group.add(ring);
+  }
+
+  const div = document.createElement('div');
+  div.className = 'node-label' + (isMilestone ? ' milestone' : '');
+  const hex = '#' + lane.color.toString(16).padStart(6, '0');
+  const badge = it.sample ? '<span class="badge">SAMPLE</span>' : '';
+  div.innerHTML = `<div class="name" style="color:${hex}">${it.title}${badge}</div>
+                   <div class="meta">${it.titleJa}</div>`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.set(0, r + 0.7, 0);
+  group.add(lbl);
+
+  scene.add(group);
+  nodeMeshes.push(core);
+  nodeById[it.id] = { item: it, group, core, ring, baseY: y, phase: Math.random() * Math.PI * 2 };
+}
+
+/* ============================================================
+   Item → Milestone connections with flowing particles
+============================================================ */
+const flows = [];
+for (const it of DATA.items) {
+  if (!it.milestone || !nodeById[it.milestone]) continue;
+  const a = nodeById[it.id].group.position.clone();
+  const b = nodeById[it.milestone].group.position.clone();
+  const mid = a.clone().lerp(b, 0.5);
+  mid.y += Math.max(1.2, a.distanceTo(b) * 0.14);
+
+  const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+  const color = laneById[it.lane].color;
+
+  scene.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)),
+    lineMat(color, 0.18)
+  ));
+
+  const p = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 8, 8),
+    new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  scene.add(p);
+  flows.push({ curve, mesh: p, offset: Math.random() });
+}
+
+/* ============================================================
+   Legend (lanes from data)
+============================================================ */
+{
+  const wrap = document.getElementById('legend-lanes');
+  for (const l of DATA.lanes) {
+    const hex = '#' + l.color.toString(16).padStart(6, '0');
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="dot" style="color:${hex}"></span>${l.label} / ${l.labelJa}`;
+    wrap.appendChild(row);
+  }
+}
+
+/* ============================================================
+   Interaction — hover & tap
+============================================================ */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+let selected = null;
+
+const panel = document.getElementById('panel');
+const pTags = document.getElementById('p-tags');
+const pName = document.getElementById('p-name');
+const pSub = document.getElementById('p-sub');
+const pMeta = document.getElementById('p-meta');
+const pList = document.getElementById('p-list');
+const pSample = document.getElementById('p-sample');
+document.getElementById('close').addEventListener('click', () => closePanel());
+
+const HORIZON_LABEL = { now: 'NOW(〜1ヶ月)', next: 'NEXT(1〜3ヶ月)', later: 'LATER(3〜6ヶ月)' };
+
+function metaRow(k, v) { return `<div><b>${k}</b>${v}</div>`; }
+
+function openPanel(it) {
+  const lane = laneById[it.lane];
+  const hex = '#' + lane.color.toString(16).padStart(6, '0');
+
+  pTags.innerHTML =
+    `<span class="tag" style="color:${hex}">${lane.label}</span>` +
+    `<span class="tag" style="color:#e2e8f0">${HORIZON_LABEL[it.horizon]}</span>` +
+    (it.sample ? `<span class="tag sample">SAMPLE</span>` : '');
+  pName.textContent = it.title;
+  pName.style.color = hex;
+  pSub.textContent = it.titleJa;
+
+  const ms = it.milestone && nodeById[it.milestone] ? nodeById[it.milestone].item : null;
+  const ice = it.ice ? `${it.ice.i} × ${it.ice.c} × ${it.ice.e} = ${it.ice.i * it.ice.c * it.ice.e}` : '—';
+  pMeta.innerHTML =
+    metaRow('ID', it.id) +
+    metaRow('TARGET', it.target || '未定 / TBD') +
+    metaRow('SIZE', it.size || '—') +
+    metaRow('OWNER', it.owner || '—') +
+    metaRow('ICE (I×C×E)', ice) +
+    metaRow('MILESTONE', ms ? `${ms.id}: ${ms.title}` : '—') +
+    metaRow('WISHLIST', it.wishlist || '—') +
+    metaRow('STATUS', it.status || 'planned');
+
+  pList.innerHTML = '';
+  for (const d of it.notes || []) {
+    const li = document.createElement('li');
+    li.style.color = hex;
+    li.innerHTML = `<span>${d}</span>`;
+    pList.appendChild(li);
+  }
+  pSample.style.display = it.sample ? 'block' : 'none';
+  panel.classList.add('open');
+}
+function closePanel() {
+  panel.classList.remove('open');
+  if (selected) {
+    const m = nodeById[selected.id].core.material;
+    if (m.emissiveIntensity !== undefined) m.emissiveIntensity = selected.horizon === 'now' ? 1.9 : 0.9;
+    selected = null;
+  }
+}
+
+function pick(e) {
+  pointer.x = (e.clientX / innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(nodeMeshes, false)[0];
+  return hit ? hit.object.userData.item : null;
+}
+
+let downPos = null;
+renderer.domElement.addEventListener('pointermove', (e) => {
+  const it = pick(e);
+  if (hovered && (!it || it.id !== hovered.id)) {
+    nodeById[hovered.id].group.scale.setScalar(1);
+    hovered = null;
+  }
+  if (it && (!hovered || hovered.id !== it.id)) {
+    hovered = it;
+    nodeById[it.id].group.scale.setScalar(1.2);
+  }
+  renderer.domElement.style.cursor = it ? 'pointer' : 'grab';
+});
+renderer.domElement.addEventListener('pointerdown', (e) => { downPos = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!downPos) return;
+  const moved = Math.hypot(e.clientX - downPos[0], e.clientY - downPos[1]);
+  downPos = null;
+  if (moved > 8) return; // drag, not a tap
+  const it = pick(e);
+  if (it) {
+    closePanel();
+    selected = it;
+    const m = nodeById[it.id].core.material;
+    if (m.emissiveIntensity !== undefined) m.emissiveIntensity = 3.2;
+    openPanel(it);
+  } else {
+    closePanel();
+  }
+});
+
+/* ============================================================
+   Animation loop
+============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  for (const id in nodeById) {
+    const e = nodeById[id];
+    e.group.position.y = e.baseY + Math.sin(t * 0.9 + e.phase) * 0.1;
+    e.core.rotation.y = t * 0.4 + e.phase;
+    if (e.ring) e.ring.rotation.z = t * 0.5;
+  }
+  for (const f of flows) {
+    const u = (t * 0.1 + f.offset) % 1;
+    f.mesh.position.copy(f.curve.getPoint(u));
+    f.mesh.material.opacity = 0.3 + 0.6 * Math.sin(u * Math.PI);
+  }
+
+  controls.update();
+  composer.render();
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAI STUDIO — Business Roadmap 3D</title>
+<style>
+  :root {
+    --cyan: #22d3ee;
+    --violet: #a78bfa;
+    --pink: #f472b6;
+    --amber: #fbbf24;
+    --green: #34d399;
+    --bg: #05060f;
+    --panel-bg: rgba(10, 14, 28, 0.82);
+    --line: rgba(148, 163, 184, 0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
+      "Yu Gothic", system-ui, -apple-system, sans-serif;
+    color: #e2e8f0;
+  }
+  #scene { position: fixed; inset: 0; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+
+  /* ---------- 3D node labels ---------- */
+  .node-label {
+    pointer-events: none;
+    text-align: center;
+    transform: translateY(-8px);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .node-label .name {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-size: 15px;
+  }
+  .node-label .sub {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .node-label.hub .name { font-size: 19px; }
+  .island-label {
+    pointer-events: none;
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    color: rgba(148, 163, 184, 0.75);
+    text-transform: uppercase;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .link-label {
+    pointer-events: none;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(226, 232, 240, 0.85);
+    background: rgba(8, 12, 24, 0.65);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 10px;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #title {
+    top: 28px;
+    left: 32px;
+  }
+  #title h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #title p {
+    margin-top: 6px;
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    color: #64748b;
+  }
+  #legend {
+    left: 32px;
+    bottom: 28px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 18px;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 12px;
+  }
+  #legend .row { display: flex; align-items: center; gap: 9px; margin: 5px 0; }
+  #legend .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+  }
+  #legend .hint {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+
+  /* ---------- Detail panel ---------- */
+  #panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: min(380px, 92vw);
+    height: 100%;
+    z-index: 20;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    padding: 34px 28px;
+    overflow-y: auto;
+    transform: translateX(105%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #panel.open { transform: translateX(0); }
+  #panel .tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    margin-bottom: 14px;
+  }
+  #panel h2 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+  }
+  #panel .sub {
+    color: #94a3b8;
+    font-size: 13px;
+    margin: 6px 0 20px;
+  }
+  #panel ul { list-style: none; }
+  #panel li {
+    position: relative;
+    padding: 10px 0 10px 22px;
+    font-size: 13px;
+    line-height: 1.8;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.15);
+  }
+  #panel li::before {
+    content: "";
+    position: absolute;
+    left: 4px; top: 19px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+  #panel li span { color: #e2e8f0; }
+  #close {
+    position: absolute;
+    top: 18px; right: 18px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #close:hover { color: #fff; border-color: #fff; }
+
+  @media (max-width: 640px) {
+    #title { top: 18px; left: 18px; }
+    #title h1 { font-size: 19px; }
+    #legend { left: 18px; bottom: 18px; padding: 10px 14px; }
+    #legend .row { display: none; }
+    #legend .hint { margin-top: 0; padding-top: 0; border-top: none; }
+    #panel { padding: 30px 22px calc(30px + env(safe-area-inset-bottom)); }
+    .node-label .name { font-size: 12px; }
+    .node-label .sub { display: none; }
+    .link-label { font-size: 9px; padding: 1px 8px; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div id="labels"></div>
+
+<div class="hud" id="title">
+  <h1>VAI STUDIO ROADMAP</h1>
+  <p>AI-NATIVE BUSINESS MAP / 2026</p>
+</div>
+
+<div class="hud" id="legend">
+  <div class="row"><span class="dot" style="color:var(--cyan)"></span>VAI studio — 3ブランド & AI全自動営業</div>
+  <div class="row"><span class="dot" style="color:var(--amber)"></span>X / YouTube — AI発信 → flow への導線</div>
+  <div class="row"><span class="dot" style="color:var(--green)"></span>vacanti — 豪州 留学生向け求職SaaS</div>
+  <div class="hint">ドラッグで回転 / ピンチ・スクロールでズーム<br>ノードをタップで詳細を表示</div>
+</div>
+
+<aside id="panel">
+  <button id="close" aria-label="閉じる">✕</button>
+  <span class="tag" id="p-tag"></span>
+  <h2 id="p-name"></h2>
+  <p class="sub" id="p-sub"></p>
+  <ul id="p-list"></ul>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ============================================================
+   Data — 3つの柱の並列マップ
+============================================================ */
+const COLORS = {
+  cyan:   0x22d3ee,
+  violet: 0xa78bfa,
+  pink:   0xf472b6,
+  amber:  0xfbbf24,
+  green:  0x34d399,
+};
+
+const islands = [
+  { id: 'studio',  label: 'VAI STUDIO',  center: [0, 0, 0],    radius: 7.2, color: COLORS.cyan },
+  { id: 'media',   label: 'X / YOUTUBE', center: [-15, 0, -3], radius: 5.2, color: COLORS.amber },
+  { id: 'vacanti', label: 'VACANTI',     center: [15, 0, -3],  radius: 5.2, color: COLORS.green },
+];
+
+const nodes = [
+  // ---- VAI studio ----
+  {
+    id: 'studio-hub', island: 'studio', hub: true,
+    name: 'VAI studio', sub: 'AIスタジオ / 3ブランド構成',
+    pos: [0, 3.6, -1.2], size: 1.05, color: COLORS.cyan, tag: 'CORE',
+    details: [
+      'VAI motion / VAI flow / VAI build の3ブランド体制',
+      'motion(安価・低リスク)で顧客との信頼を構築',
+      '信頼を土台に flow・build の高単価案件へ展開する「信頼の階段」戦略',
+      '営業からデリバリーまで AI ネイティブな体制を目指す',
+    ],
+  },
+  {
+    id: 'motion', island: 'studio',
+    name: 'VAI motion', sub: 'AI動画生成・安価インスタ運用',
+    pos: [0, 1.7, 3.8], size: 0.62, color: COLORS.cyan, tag: 'ENTRY',
+    details: [
+      'AI動画生成と安価なインスタ運用代行が商材',
+      '低価格・低ハードルの「入口商材」ポジション',
+      'まず成果と信頼を積み、flow / build へのアップセルの起点にする',
+    ],
+  },
+  {
+    id: 'flow', island: 'studio',
+    name: 'VAI flow', sub: 'AIワークフローコンサル',
+    pos: [-3.6, 2.0, -0.8], size: 0.62, color: COLORS.violet, tag: 'UPSELL',
+    details: [
+      '業務のAIワークフロー設計・導入コンサル',
+      'motion で信頼を得た顧客への第一のアップセル先',
+      'X / YouTube の発信からの受託導線もここに接続',
+    ],
+  },
+  {
+    id: 'build', island: 'studio',
+    name: 'VAI build', sub: 'AI受託開発',
+    pos: [3.6, 2.0, -0.8], size: 0.62, color: COLORS.pink, tag: 'UPSELL',
+    details: [
+      'AIを活用した受託開発ブランド',
+      'flow と並ぶ高単価レイヤー。motion からの信頼を土台に提案',
+    ],
+  },
+  {
+    id: 'outreach', island: 'studio',
+    name: 'AI全自動アウトリーチ', sub: 'リスト化 → 初回DM → アポまでAI完結',
+    pos: [5.4, 1.4, 3.2], size: 0.55, color: COLORS.cyan, tag: 'AUTOMATION',
+    details: [
+      'Instagram / Googleマップから見込み客を自動リスト化',
+      '初回メッセージ送信から商談アポ獲得まで完全AI化',
+      '相手のインスタ写真等からパーソナライズ動画を自動生成して添付する構想',
+      '先に「動画を作ったので送ってもいいですか?」と打診し、返信が来たら動画を生成するフローも検討中',
+      '顧客ごとに最適化されたメッセージで返信率を最大化',
+    ],
+  },
+
+  // ---- X / YouTube ----
+  {
+    id: 'media-hub', island: 'media', hub: true,
+    name: 'X / YouTube', sub: 'AI情報発信アカウント',
+    pos: [-15, 3.2, -3.2], size: 0.85, color: COLORS.amber, tag: 'MEDIA',
+    details: [
+      'AIに関する情報発信用のXアカウントを開設',
+      'YouTube は顔出しで発信予定',
+      '発信は最終的に VAI flow(ワークフロー受託)への導線として機能させる',
+    ],
+  },
+  {
+    id: 'media-p1', island: 'media',
+    name: 'Phase 1 / CCAF挑戦', sub: 'Claude Code資格・毎日一問一答',
+    pos: [-17.4, 1.6, -0.4], size: 0.52, color: COLORS.amber, tag: 'PHASE 1',
+    details: [
+      'CCAF(Claude Code資格)取得を目指す過程を発信するアカウント',
+      'Claude Code公式・GitHub上の問題集から毎日一問一答を出題',
+      '英語のみの情報を日本語化して提供(差別化ポイント)',
+      'コメント欄に回答+解説の画像を自動生成して投稿',
+      '前日に学んだAIネタのツイートも実施',
+      '制作は全てAIで完結。自分は投稿ボタンを押すだけ',
+    ],
+  },
+  {
+    id: 'media-p2', island: 'media',
+    name: 'Phase 2 / 非エンジニア向け', sub: 'Claude Codeの障壁を下げる',
+    pos: [-12.6, 1.6, -0.4], size: 0.52, color: COLORS.amber, tag: 'PHASE 2',
+    details: [
+      'ゆくゆくは非エンジニア向けに Claude Code の障壁を下げる発信へ進化',
+      'YouTube でも顔出しで発信',
+      'X / YouTube の信頼資産を VAI flow の受託案件につなげる',
+    ],
+  },
+
+  // ---- vacanti ----
+  {
+    id: 'vac-hub', island: 'vacanti', hub: true,
+    name: 'vacanti', sub: '豪州・留学生向け求職SaaS',
+    pos: [15, 3.2, -3.2], size: 0.85, color: COLORS.green, tag: 'SAAS',
+    details: [
+      'オーストラリアで販売中の、留学生などに向けた仕事探しSaaS',
+      '低労力でとにかく大量に応募が集まる流れを構築する',
+    ],
+  },
+  {
+    id: 'vac-sns', island: 'vacanti',
+    name: 'SNS完全自動化', sub: 'Instagram / TikTok / RedNote',
+    pos: [15, 1.6, 0.6], size: 0.52, color: COLORS.green, tag: 'AUTOMATION',
+    details: [
+      'Instagram / TikTok / RedNote のコンテンツ作成を全自動化',
+      '労力をかけずに大量のコンテンツを供給し続ける体制',
+      '露出の最大化 → 大量応募の獲得につなげる',
+    ],
+  },
+];
+
+const links = [
+  { from: 'outreach',  to: 'motion',    color: COLORS.cyan,   label: 'アポ供給' },
+  { from: 'motion',    to: 'flow',      color: COLORS.violet, label: 'アップセル' },
+  { from: 'motion',    to: 'build',     color: COLORS.pink,   label: 'アップセル' },
+  { from: 'media-p1',  to: 'media-p2',  color: COLORS.amber },
+  { from: 'media-hub', to: 'flow',      color: COLORS.amber,  label: '発信 → 受託導線', lift: 4.5 },
+  { from: 'vac-hub',   to: 'vac-sns',   color: COLORS.green },
+];
+
+/* ============================================================
+   Scene setup
+============================================================ */
+const container = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05060f, 0.011);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 400);
+camera.position.set(0, 14, 30);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x05060f);
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelRenderer.setSize(innerWidth, innerHeight);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.7, 0.12);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 8;
+controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 2, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.45;
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; }, { once: true });
+
+scene.add(new THREE.AmbientLight(0x334155, 1.4));
+const keyLight = new THREE.DirectionalLight(0x93c5fd, 1.1);
+keyLight.position.set(10, 20, 12);
+scene.add(keyLight);
+
+/* ---------- Starfield ---------- */
+{
+  const starGeo = new THREE.BufferGeometry();
+  const N = 1400;
+  const positions = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 90 + Math.random() * 130;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = Math.abs(r * Math.cos(phi)) * 0.6 - 8;
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
+    color: 0x8aa2c8, size: 0.35, sizeAttenuation: true,
+    transparent: true, opacity: 0.8, depthWrite: false,
+  }));
+  scene.add(stars);
+}
+
+/* ---------- Ground grid ---------- */
+{
+  const grid = new THREE.GridHelper(220, 110, 0x16243f, 0x0c1426);
+  grid.position.y = -0.45;
+  scene.add(grid);
+}
+
+/* ---------- Islands (platforms) ---------- */
+for (const isl of islands) {
+  const [cx, cy, cz] = isl.center;
+  const group = new THREE.Group();
+  group.position.set(cx, cy, cz);
+
+  const disc = new THREE.Mesh(
+    new THREE.CylinderGeometry(isl.radius, isl.radius * 1.04, 0.22, 64),
+    new THREE.MeshStandardMaterial({
+      color: 0x0b1020, transparent: true, opacity: 0.85,
+      roughness: 0.4, metalness: 0.6,
+      emissive: isl.color, emissiveIntensity: 0.02,
+    })
+  );
+  disc.position.y = -0.12;
+  group.add(disc);
+
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(isl.radius, 0.035, 12, 96),
+    new THREE.MeshBasicMaterial({ color: isl.color, transparent: true, opacity: 0.9 })
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.02;
+  group.add(rim);
+
+  const innerRing = new THREE.Mesh(
+    new THREE.TorusGeometry(isl.radius * 0.62, 0.012, 8, 96),
+    new THREE.MeshBasicMaterial({ color: isl.color, transparent: true, opacity: 0.3 })
+  );
+  innerRing.rotation.x = Math.PI / 2;
+  innerRing.position.y = 0.02;
+  group.add(innerRing);
+
+  const div = document.createElement('div');
+  div.className = 'island-label';
+  div.textContent = isl.label;
+  const lbl = new CSS2DObject(div);
+  lbl.position.set(0, 0.15, isl.radius + 1.1);
+  group.add(lbl);
+
+  scene.add(group);
+}
+
+/* ---------- Nodes ---------- */
+const nodeMeshes = [];
+const nodeById = {};
+
+for (const n of nodes) {
+  const group = new THREE.Group();
+  group.position.set(...n.pos);
+
+  const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(n.size, 2),
+    new THREE.MeshStandardMaterial({
+      color: 0x0f172a, roughness: 0.25, metalness: 0.4,
+      emissive: n.color, emissiveIntensity: 1.6,
+    })
+  );
+  core.userData.node = n;
+  group.add(core);
+
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(n.size * 1.55, 24, 24),
+    new THREE.MeshBasicMaterial({
+      color: n.color, transparent: true, opacity: 0.07,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  group.add(halo);
+
+  let ring = null;
+  if (n.hub) {
+    ring = new THREE.Mesh(
+      new THREE.TorusGeometry(n.size * 2.0, 0.02, 8, 64),
+      new THREE.MeshBasicMaterial({
+        color: n.color, transparent: true, opacity: 0.55,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    ring.rotation.x = Math.PI / 2.4;
+    group.add(ring);
+  }
+
+  // pillar of light down to the platform
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, n.pos[1], 6),
+    new THREE.MeshBasicMaterial({
+      color: n.color, transparent: true, opacity: 0.25,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  beam.position.y = -n.pos[1] / 2;
+  group.add(beam);
+
+  const div = document.createElement('div');
+  div.className = 'node-label' + (n.hub ? ' hub' : '');
+  div.innerHTML = `<div class="name" style="color:#${n.color.toString(16).padStart(6, '0')}">${n.name}</div>
+                   <div class="sub">${n.sub}</div>`;
+  const lbl = new CSS2DObject(div);
+  lbl.position.set(0, n.size + 0.75, 0);
+  group.add(lbl);
+
+  scene.add(group);
+  nodeMeshes.push(core);
+  nodeById[n.id] = { node: n, group, core, halo, ring, baseY: n.pos[1], phase: Math.random() * Math.PI * 2 };
+}
+
+/* ---------- Links (curves + flowing particles) ---------- */
+const flows = [];
+
+for (const lk of links) {
+  const a = new THREE.Vector3(...nodeById[lk.from].node.pos);
+  const b = new THREE.Vector3(...nodeById[lk.to].node.pos);
+  const mid = a.clone().lerp(b, 0.5);
+  mid.y += lk.lift ?? Math.max(1.4, a.distanceTo(b) * 0.18);
+
+  const curve = new THREE.QuadraticBezierCurve3(a, mid, b);
+  const points = curve.getPoints(64);
+
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({
+      color: lk.color, transparent: true, opacity: 0.32,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  scene.add(line);
+
+  // moving particles
+  const sprites = [];
+  for (let i = 0; i < 3; i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 8, 8),
+      new THREE.MeshBasicMaterial({
+        color: lk.color, transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    scene.add(p);
+    sprites.push({ mesh: p, offset: i / 3 });
+  }
+  flows.push({ curve, sprites });
+
+  if (lk.label) {
+    const div = document.createElement('div');
+    div.className = 'link-label';
+    div.textContent = lk.label;
+    const lbl = new CSS2DObject(div);
+    lbl.position.copy(curve.getPoint(0.5)).add(new THREE.Vector3(0, 0.25, 0));
+    scene.add(lbl);
+  }
+}
+
+/* ============================================================
+   Interaction — hover & click
+============================================================ */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+let selected = null;
+
+const panel = document.getElementById('panel');
+const pTag = document.getElementById('p-tag');
+const pName = document.getElementById('p-name');
+const pSub = document.getElementById('p-sub');
+const pList = document.getElementById('p-list');
+document.getElementById('close').addEventListener('click', () => closePanel());
+
+function openPanel(n) {
+  const hex = '#' + n.color.toString(16).padStart(6, '0');
+  pTag.textContent = n.tag;
+  pTag.style.color = hex;
+  pName.textContent = n.name;
+  pName.style.color = hex;
+  pSub.textContent = n.sub;
+  pList.innerHTML = '';
+  for (const d of n.details) {
+    const li = document.createElement('li');
+    li.style.color = hex;
+    li.innerHTML = `<span>${d}</span>`;
+    pList.appendChild(li);
+  }
+  panel.classList.add('open');
+}
+function closePanel() {
+  panel.classList.remove('open');
+  if (selected) { nodeById[selected.id].core.material.emissiveIntensity = 1.6; selected = null; }
+}
+
+function pick(e) {
+  pointer.x = (e.clientX / innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(nodeMeshes, false)[0];
+  return hit ? hit.object.userData.node : null;
+}
+
+let downPos = null;
+renderer.domElement.addEventListener('pointermove', (e) => {
+  const n = pick(e);
+  if (hovered && (!n || n.id !== hovered.id)) {
+    nodeById[hovered.id].group.scale.setScalar(1);
+    hovered = null;
+  }
+  if (n && (!hovered || hovered.id !== n.id)) {
+    hovered = n;
+    nodeById[n.id].group.scale.setScalar(1.18);
+  }
+  renderer.domElement.style.cursor = n ? 'pointer' : 'grab';
+});
+renderer.domElement.addEventListener('pointerdown', (e) => { downPos = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!downPos) return;
+  const moved = Math.hypot(e.clientX - downPos[0], e.clientY - downPos[1]);
+  downPos = null;
+  if (moved > 6) return; // it was a drag, not a click
+  const n = pick(e);
+  if (n) {
+    if (selected) nodeById[selected.id].core.material.emissiveIntensity = 1.6;
+    selected = n;
+    nodeById[n.id].core.material.emissiveIntensity = 3.2;
+    openPanel(n);
+  } else {
+    closePanel();
+  }
+});
+
+/* ============================================================
+   Animation loop
+============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  for (const id in nodeById) {
+    const e = nodeById[id];
+    e.group.position.y = e.baseY + Math.sin(t * 0.9 + e.phase) * 0.12;
+    e.core.rotation.y = t * 0.35 + e.phase;
+    if (e.ring) e.ring.rotation.z = t * 0.5;
+  }
+  for (const f of flows) {
+    for (const s of f.sprites) {
+      const u = (t * 0.12 + s.offset) % 1;
+      s.mesh.position.copy(f.curve.getPoint(u));
+      s.mesh.material.opacity = 0.4 + 0.6 * Math.sin(u * Math.PI);
+    }
+  }
+
+  controls.update();
+  composer.render();
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
